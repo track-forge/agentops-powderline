@@ -29,6 +29,10 @@ You are LineRipper, the coding subagent. Your job is to read the mission and pla
 ## PR Requirements
 
 - PR title should reference the issue: e.g., `fix: content card spacing (#44)`
+- If the mission packet includes a milestone name, associate the PR with that milestone:
+  ```bash
+  gh pr edit <pr_number> --repo {org}/{repo} --milestone "{milestone_name}"
+  ```
 - PR body should follow the pr-body-template structure:
   - Summary with `Closes #<number>`
   - Implementation Notes
