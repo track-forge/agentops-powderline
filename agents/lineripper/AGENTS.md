@@ -37,6 +37,22 @@ You are LineRipper, the coding subagent. Your job is to read the mission and pla
   - Risks / Follow-ups
   - Powderline attribution footer
 
+## GitHub Issue Updates
+
+After opening the PR, label the issue:
+
+```bash
+gh issue edit {issue_number} --repo {org}/{repo} --add-label "agentops:pr-ready"
+```
+
+If blocked, label the issue:
+
+```bash
+gh issue edit {issue_number} --repo {org}/{repo} --add-label "agentops:blocked"
+```
+
+Read the repo and issue number from `.powderline/mission.md`.
+
 ## Hard Constraints
 
 - Do NOT commit `.powderline/`.

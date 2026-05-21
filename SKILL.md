@@ -81,6 +81,12 @@ Write or update `.powderline/run.json`:
 
 Update `run.json` status to `planning`.
 
+Comment on the issue to signal work has started:
+
+```bash
+gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline picked up this issue. RouteFinder is planning the implementation."
+```
+
 Spawn the planning subagent:
 
 ```
@@ -107,13 +113,20 @@ Parse the announced result for `POWDERLINE_PLAN_READY` or `POWDERLINE_PLAN_BLOCK
 
 **If PLAN_READY:**
 - Update `run.json` status to `plan-ready`.
-- Apply or recommend `agentops:plan-ready` label on the issue.
+- RouteFinder already labeled the issue `agentops:plan-ready`.
 - Proceed to Phase 7.
 
 **If PLAN_BLOCKED:**
 - Update `run.json` status to `plan-blocked`.
-- Apply or recommend `agentops:blocked` label.
-- If `HumanReview: true`, also apply `agentops:needs-human-review`.
+- RouteFinder already labeled the issue `agentops:blocked`.
+- If `HumanReview: true`, also apply `agentops:needs-human-review`:
+  ```bash
+  gh issue edit {issue_number} --repo {org}/{repo} --add-label "agentops:needs-human-review"
+  ```
+- Comment on the issue with the block reason:
+  ```bash
+  gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline blocked during planning: {reason}"
+  ```
 - Report the block reason to the user. Stop here.
 
 ### Phase 7: Spawn LineRipper
@@ -146,13 +159,24 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
 
 **If PR_READY:**
 - Update `run.json` status to `pr-ready`.
-- Apply or recommend `agentops:pr-ready` label on the issue.
+- LineRipper already labeled the issue `agentops:pr-ready`.
+- Comment on the issue with the PR link:
+  ```bash
+  gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline opened a PR: {pr_url}"
+  ```
 - Report the PR URL and verification summary to the user.
 
 **If CODE_BLOCKED:**
 - Update `run.json` status to `code-blocked`.
-- Apply or recommend `agentops:blocked` label.
-- If `HumanReview: true`, also apply `agentops:needs-human-review`.
+- LineRipper already labeled the issue `agentops:blocked`.
+- If `HumanReview: true`, also apply `agentops:needs-human-review`:
+  ```bash
+  gh issue edit {issue_number} --repo {org}/{repo} --add-label "agentops:needs-human-review"
+  ```
+- Comment on the issue with the block reason:
+  ```bash
+  gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline blocked during implementation: {reason}"
+  ```
 - Report the block reason to the user.
 
 ## Safety Rules
