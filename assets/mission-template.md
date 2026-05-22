@@ -49,6 +49,10 @@
 
 {RAW_MILESTONE_DESCRIPTION}
 
+## Repo Powderline Config
+
+{POWDERLINE_MD_CONTENTS_OR_NONE}
+
 ## Raw Issue Body
 
 {RAW_ISSUE_BODY}

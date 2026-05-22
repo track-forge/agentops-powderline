@@ -12,11 +12,13 @@ REQUIRED_FILES=(
   "agents/lineripper/SOUL.md"
   "agents/lineripper/IDENTITY.md"
   "assets/TOOLS.md"
+  "assets/powderline-init-template.sh"
   "assets/mission-template.md"
   "assets/plan-template.md"
   "assets/pr-body-template.md"
   "references/labels.md"
   "references/milestone-rules.md"
+  "references/repo-config.md"
   "references/workspace-layout.md"
 )
 

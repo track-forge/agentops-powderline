@@ -54,7 +54,8 @@ copy_file "$REPO_ROOT/SKILL.md" "$SKILL_DIR/SKILL.md" || skipped=$((skipped + 1)
 
 echo ""
 echo "=== Assets ==="
-for f in "$REPO_ROOT"/assets/*.md; do
+for f in "$REPO_ROOT"/assets/*.md "$REPO_ROOT"/assets/*.sh; do
+  [[ -f "$f" ]] || continue
   copy_file "$f" "$SKILL_DIR/assets/$(basename "$f")" || skipped=$((skipped + 1))
 done
 

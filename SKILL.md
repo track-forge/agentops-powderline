@@ -53,7 +53,13 @@ Worktree reuse rules:
 - Never delete or reset an existing worktree without explicit user instruction.
 
 4. Create `.powderline/` in the worktree root.
-5. Add `.powderline/` to `.git/info/exclude` if not already present.
+5. Add `.powderline/` and `.env.local` to `.git/info/exclude` if not already present.
+6. If `.powderline.init.sh` exists in the worktree root, run it:
+   ```bash
+   cd {worktree} && bash .powderline.init.sh
+   ```
+   If it exits non-zero, stop and report `agentops:blocked` with the output.
+7. If `POWDERLINE.md` exists in the worktree root, read it and include relevant context in the mission packet.
 
 ### Phase 4: Write Mission Packet
 
