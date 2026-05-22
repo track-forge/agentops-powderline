@@ -11,6 +11,7 @@ REQUIRED_FILES=(
   "agents/lineripper/AGENTS.md"
   "agents/lineripper/SOUL.md"
   "agents/lineripper/IDENTITY.md"
+  "assets/TOOLS.md"
   "assets/mission-template.md"
   "assets/plan-template.md"
   "assets/pr-body-template.md"

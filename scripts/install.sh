@@ -26,6 +26,8 @@ fi
 SKILL_DIR="$OPENCLAW_HOME/workspace/skills/agentops-powderline"
 RF_WORKSPACE="$OPENCLAW_HOME/agents/routefinder/workspace"
 LR_WORKSPACE="$OPENCLAW_HOME/agents/lineripper/workspace"
+CREDENTIALS_DIR="$OPENCLAW_HOME/credentials"
+ENV_LOCAL="$CREDENTIALS_DIR/env.local"
 
 copy_file() {
   local src="$1"
@@ -63,6 +65,11 @@ for f in "$REPO_ROOT"/references/*.md; do
 done
 
 echo ""
+echo "=== Shared TOOLS.md ==="
+copy_file "$REPO_ROOT/assets/TOOLS.md" "$RF_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
+copy_file "$REPO_ROOT/assets/TOOLS.md" "$LR_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
+
+echo ""
 echo "=== RouteFinder agent workspace ==="
 for f in "$REPO_ROOT"/agents/routefinder/*.md; do
   copy_file "$f" "$RF_WORKSPACE/$(basename "$f")" || skipped=$((skipped + 1))
@@ -73,6 +80,25 @@ echo "=== LineRipper agent workspace ==="
 for f in "$REPO_ROOT"/agents/lineripper/*.md; do
   copy_file "$f" "$LR_WORKSPACE/$(basename "$f")" || skipped=$((skipped + 1))
 done
+
+echo ""
+echo "=== Credentials symlink ==="
+if [[ -f "$ENV_LOCAL" ]]; then
+  for ws in "$RF_WORKSPACE" "$LR_WORKSPACE"; do
+    mkdir -p "$ws"
+    if [[ -L "$ws/.env.local" ]]; then
+      echo "  OK (symlink exists): $ws/.env.local"
+    else
+      ln -sf "$ENV_LOCAL" "$ws/.env.local"
+      echo "  -> $ws/.env.local -> $ENV_LOCAL"
+    fi
+  done
+else
+  echo "  SKIP: $ENV_LOCAL not found."
+  echo "  Create it and re-run install, or symlink manually:"
+  echo "    ln -sf $ENV_LOCAL $RF_WORKSPACE/.env.local"
+  echo "    ln -sf $ENV_LOCAL $LR_WORKSPACE/.env.local"
+fi
 
 echo ""
 if [[ $skipped -gt 0 ]]; then
