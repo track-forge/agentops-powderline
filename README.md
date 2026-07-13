@@ -11,10 +11,12 @@ Coordinator → gathers issue/milestone context
            → prepares worktree + mission packet
            → spawns RouteFinder (plan pass)
            → spawns LineRipper (code pass)
+           → repairs failing CI with bounded LineRipper retries
+           → spawns RouteFinder (plan-aware review pass)
            → reports PR URL
 ```
 
-The coordinator agent owns orchestration. RouteFinder owns planning. LineRipper owns implementation. Durable artifacts (`.powderline/mission.md`, `.powderline/plan.md`) pass between them — no chat-only handoff.
+The coordinator agent owns orchestration. RouteFinder owns planning and review. LineRipper owns implementation and bounded CI repair. Durable artifacts (`.powderline/mission.md`, `.powderline/plan.md`, `.powderline/review.md`) pass between them — no chat-only handoff.
 
 ## Install
 
@@ -58,6 +60,8 @@ The coordinator will:
 3. Write a mission packet to `.powderline/mission.md`
 4. Spawn RouteFinder to write `.powderline/plan.md`
 5. Spawn LineRipper to implement and open a PR
+6. Repair failed CI with at most two targeted LineRipper passes
+7. Spawn RouteFinder to compare the PR diff against the original plan and write `.powderline/review.md`
 
 ## Labels
 
@@ -70,4 +74,4 @@ The coordinator will:
 
 One repo + one issue + optional milestone → plan → code → PR.
 
-Not yet implemented: parallel milestone execution, auto-merge, review agents, dashboards.
+Not yet implemented: parallel milestone execution, auto-merge, dashboards.
