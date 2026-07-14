@@ -192,7 +192,7 @@ The repair loop is optional. Skip it when the mission explicitly disables CI rep
 ```bash
 checks_discovered=false
 for attempt in 1 2 3 4 5 6; do
-  if gh pr checks {pr_number} --repo {org}/{repo} --json name,state,link \
+  if gh pr checks {pr_number} --repo {org}/{repo} --json name,state,bucket,link \
       | jq -e 'length > 0' >/dev/null; then
     checks_discovered=true
     break
@@ -209,9 +209,9 @@ When checks are discovered, wait for pending checks to reach a terminal state be
 checks_complete=false
 for poll in $(seq 1 60); do
   checks_json="$(gh pr checks {pr_number} --repo {org}/{repo} \
-    --json name,state,link 2>/dev/null || true)"
+    --json name,state,bucket,link 2>/dev/null || true)"
 
-  if jq -e 'length > 0 and all(.[]; .state != "PENDING")' \
+  if jq -e 'length > 0 and all(.[]; .bucket != "pending")' \
       >/dev/null <<<"$checks_json"; then
     checks_complete=true
     break
@@ -221,7 +221,7 @@ for poll in $(seq 1 60); do
 done
 ```
 
-This completion wait is capped at 60 queries over roughly ten minutes. If checks are still pending after the final query, update `run.json` to status `ci-blocked` with `ci_status: timed-out`, record the pending check names and links, apply `agentops:blocked` and (when `HumanReview: true`) `agentops:needs-human-review`, comment on the issue with the timeout evidence, report the block to the user, and stop. A CI timeout does not consume or trigger a repair attempt because there is no terminal failure to repair.
+This completion wait is capped at 60 queries over roughly ten minutes. If checks are still pending after the final query, select timeout evidence with `jq -c '[.[] | select(.bucket == "pending") | {name, link}]' <<<"$checks_json"`, update `run.json` to status `ci-blocked` with `ci_status: timed-out`, record those pending check names and links, apply `agentops:blocked` and (when `HumanReview: true`) `agentops:needs-human-review`, comment on the issue with the timeout evidence, report the block to the user, and stop. A CI timeout does not consume or trigger a repair attempt because there is no terminal failure to repair.
 
 If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then run the same bounded completion polling procedure before evaluating the attempt. Apply the identical `ci_status: timed-out` blocked path if a post-repair suite does not reach a terminal state within the completion window.
 
