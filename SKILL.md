@@ -170,7 +170,7 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
   ```bash
   gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline opened a PR: {pr_url}"
   ```
-- Report the PR URL and verification summary to the user.
+- Proceed to Phase 9.
 
 **If CODE_BLOCKED:**
 - Update `run.json` status to `code-blocked`.
@@ -185,6 +185,129 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
   ```
 - Report the block reason to the user.
 
+### Phase 9: Run the CI Repair Loop
+
+The repair loop is optional. Skip it when the mission explicitly disables CI repair. Otherwise, wait for GitHub to discover checks after LineRipper opens the PR. A first empty response does **not** prove that the PR has no CI.
+
+```bash
+checks_discovered=false
+for attempt in 1 2 3 4 5 6; do
+  if gh pr checks {pr_number} --repo {org}/{repo} --json name,state,bucket,link \
+      | jq -e 'length > 0' >/dev/null; then
+    checks_discovered=true
+    break
+  fi
+  if [ "$attempt" -lt 6 ]; then sleep 10; fi
+done
+```
+
+This is a bounded discovery wait: at most six queries over roughly one minute. If no checks are registered after the final query, record `ci_status: not-configured` in `run.json` and proceed to Phase 10. Do not interpret an empty result before the final query as "no CI."
+
+When checks are discovered, wait for pending checks to reach a terminal state before deciding whether repair is needed. Keep this completion wait bounded too; never use `gh pr checks --watch` without an outer timeout.
+
+```bash
+checks_complete=false
+for poll in $(seq 1 60); do
+  checks_json="$(gh pr checks {pr_number} --repo {org}/{repo} \
+    --json name,state,bucket,link 2>/dev/null || true)"
+
+  if jq -e 'length > 0 and all(.[]; .bucket != "pending")' \
+      >/dev/null <<<"$checks_json"; then
+    checks_complete=true
+    break
+  fi
+
+  if [ "$poll" -lt 60 ]; then sleep 10; fi
+done
+```
+
+This completion wait is capped at 60 queries over roughly ten minutes. If checks are still pending after the final query, select timeout evidence with `jq -c '[.[] | select(.bucket == "pending") | {name, link}]' <<<"$checks_json"`, update `run.json` to status `ci-blocked` with `ci_status: timed-out`, record those pending check names and links, apply `agentops:blocked` and (when `HumanReview: true`) `agentops:needs-human-review`, comment on the issue with the timeout evidence, report the block to the user, and stop. A CI timeout does not consume or trigger a repair attempt because there is no terminal failure to repair.
+
+If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then run the same bounded completion polling procedure before evaluating the attempt. Apply the identical `ci_status: timed-out` blocked path if a post-repair suite does not reach a terminal state within the completion window.
+
+Use a maximum of **two repair attempts** unless the mission specifies a lower limit. Never use an unbounded retry loop.
+
+For each attempt with failing checks:
+
+1. Update `run.json` status to `ci-repairing` and record `ci_repair_attempt`.
+2. Capture the failing run details and logs:
+   ```bash
+   gh run view {run_id} --repo {org}/{repo} --log-failed
+   ```
+3. Re-spawn LineRipper in CI repair mode on the existing issue worktree and PR branch:
+   ```
+   sessions_spawn:
+     agentId: "lineripper"
+     context: "isolated"
+     task: |
+       You are LineRipper operating in CI_REPAIR mode. Read your SOUL.md and AGENTS.md.
+
+       Mission: {worktree}/.powderline/mission.md
+       Plan: {worktree}/.powderline/plan.md
+       Worktree: {worktree}
+       PR: {pr_url}
+       Repair attempt: {attempt} of {max_attempts}
+       Failing CI evidence: {run_ids_and_failed_jobs}
+
+       Inspect the failed logs, apply only the minimal targeted fix, run the relevant
+       checks locally, commit, and push normally. Do not force-push or broaden scope.
+
+       Return POWDERLINE_CI_REPAIRED or POWDERLINE_CI_BLOCKED per your output contract.
+   ```
+4. Wait for CI using the bounded discovery and completion procedures above, then re-check status. Never wait indefinitely.
+
+Stop the loop immediately when checks pass. Record `ci_repair_attempts`, the repair commit SHA(s), and `ci_status: passed` in `run.json`, then proceed to Phase 10.
+
+If LineRipper reports blocked, or checks still fail after the final attempt:
+
+- Update `run.json` status to `ci-blocked` and record the failing checks.
+- Apply `agentops:blocked` and, when `HumanReview: true`, `agentops:needs-human-review`.
+- Comment on the issue with the last failing check and repair attempts.
+- Report the block to the user. Stop here.
+
+### Phase 10: Spawn RouteFinder for Plan-Aware Review
+
+The review pass is optional but enabled by default after the PR is CI-clean. Skip it only when the mission explicitly disables review.
+
+Update `run.json` status to `reviewing`, then spawn RouteFinder in review mode:
+
+```
+sessions_spawn:
+  agentId: "routefinder"
+  context: "isolated"
+  task: |
+    You are RouteFinder operating in REVIEW mode. Read your SOUL.md and AGENTS.md.
+
+    Mission: {worktree}/.powderline/mission.md
+    Original plan: {worktree}/.powderline/plan.md
+    Worktree: {worktree}
+    PR: {pr_url}
+    Base branch: {pr_target}
+    Review template: {routefinder_workspace}/assets/review-template.md
+
+    Compare the PR diff against the mission and original plan. Identify completed
+    items, missed items, scope drift, unintended changes, verification gaps, and risks.
+    Write the durable review to {worktree}/.powderline/review.md using the review template
+    at the absolute path above.
+
+    Return POWDERLINE_REVIEW_READY or POWDERLINE_REVIEW_BLOCKED per your output contract.
+```
+
+### Phase 11: Handle Review Result
+
+**If REVIEW_READY with no blocking findings:**
+
+- Update `run.json` status to `review-ready` and record `review_path`.
+- Keep `agentops:pr-ready` applied.
+- Report the PR URL, CI evidence, and review summary to the user.
+
+**If REVIEW_READY with blocking findings, or REVIEW_BLOCKED:**
+
+- Update `run.json` status to `review-blocked`.
+- Apply `agentops:needs-human-review`.
+- Comment on the issue with a concise summary and the local `review.md` path.
+- Report the findings to the user. Do not silently send the PR back through implementation; a new repair pass requires explicit coordinator or human direction.
+
 ## Safety Rules
 
 These are hard rules. Do not override them.
@@ -197,6 +320,8 @@ These are hard rules. Do not override them.
 - Never target `main` if milestone rules prohibit it.
 - Never perform production deploys.
 - Never rotate secrets or publish packages/releases.
+- Never exceed the configured CI repair attempt limit.
+- Never let the review pass modify code, commits, branches, or the PR.
 - Stop and escalate on security, privacy, destructive migration, or unclear product behavior.
 
 ## Label Reference

@@ -6,7 +6,10 @@ read_when:
 
 # AGENTS.md — LineRipper
 
-You are LineRipper, the coding subagent. Your job is to read the mission and plan, implement the change, verify it, and open a PR.
+You are LineRipper, the coding and CI-repair subagent. Your mode is set by the task prompt:
+
+- `IMPLEMENT` (default): implement the plan, verify it, and open a PR.
+- `CI_REPAIR`: inspect failing CI on the existing PR branch, make a minimal targeted fix, verify it, commit, and push normally.
 
 ## Startup
 
@@ -27,6 +30,19 @@ You are LineRipper, the coding subagent. Your job is to read the mission and pla
 5. Commit with clear, conventional commit messages.
 6. Push the branch.
 7. Open a PR targeting the configured PR target branch.
+
+## CI Repair Mode
+
+When the task prompt specifies `CI_REPAIR` mode:
+
+1. Check out the existing PR branch; do not create a new branch or PR.
+2. Read the supplied failed run/job evidence, then inspect the complete failed logs with `gh run view --log-failed` when available.
+3. Identify the smallest change that directly addresses the failure. Do not re-plan the issue or broaden scope.
+4. Run the failing check locally, plus any narrowly related validation needed to avoid a false fix.
+5. Commit with a clear repair message and push normally. Never force-push.
+6. Report the repair commit SHA and exact verification performed.
+
+If the failure is unrelated to the PR, flaky without a safe deterministic fix, caused by missing infrastructure/secrets, or requires product/architecture judgment, report blocked rather than guessing.
 
 ## PR Requirements
 
@@ -108,3 +124,29 @@ Use `POWDERLINE_CODE_BLOCKED` when:
 - Required secrets or environment are missing
 - The worktree is in unexpected state
 - Security, privacy, or architecture concerns arise during implementation
+
+### On successful CI repair:
+
+```
+POWDERLINE_CI_REPAIRED
+Issue: #<number>
+Branch: <branch name>
+PR: <github pr url>
+Commit: <repair commit SHA>
+Status: repaired
+Verification: <commands run and result summary>
+HumanReview: true|false
+Notes: <short notes>
+```
+
+### On blocked CI repair:
+
+```
+POWDERLINE_CI_BLOCKED
+Issue: #<number>
+Branch: <branch name>
+PR: <github pr url>
+Status: blocked
+HumanReview: true
+Reason: <short reason>
+```

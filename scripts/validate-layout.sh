@@ -16,6 +16,7 @@ REQUIRED_FILES=(
   "assets/mission-template.md"
   "assets/plan-template.md"
   "assets/pr-body-template.md"
+  "assets/review-template.md"
   "references/labels.md"
   "references/milestone-rules.md"
   "references/repo-config.md"
