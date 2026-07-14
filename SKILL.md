@@ -203,13 +203,27 @@ done
 
 This is a bounded discovery wait: at most six queries over roughly one minute. If no checks are registered after the final query, record `ci_status: not-configured` in `run.json` and proceed to Phase 10. Do not interpret an empty result before the final query as "no CI."
 
-When checks are discovered, wait for pending checks to reach a terminal state before deciding whether repair is needed:
+When checks are discovered, wait for pending checks to reach a terminal state before deciding whether repair is needed. Keep this completion wait bounded too; never use `gh pr checks --watch` without an outer timeout.
 
 ```bash
-gh pr checks {pr_number} --repo {org}/{repo} --watch --interval 10
+checks_complete=false
+for poll in $(seq 1 60); do
+  checks_json="$(gh pr checks {pr_number} --repo {org}/{repo} \
+    --json name,state,link 2>/dev/null || true)"
+
+  if jq -e 'length > 0 and all(.[]; .state != "PENDING")' \
+      >/dev/null <<<"$checks_json"; then
+    checks_complete=true
+    break
+  fi
+
+  if [ "$poll" -lt 60 ]; then sleep 10; fi
+done
 ```
 
-If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then watch it to completion before evaluating the attempt.
+This completion wait is capped at 60 queries over roughly ten minutes. If checks are still pending after the final query, update `run.json` to status `ci-blocked` with `ci_status: timed-out`, record the pending check names and links, apply `agentops:blocked` and (when `HumanReview: true`) `agentops:needs-human-review`, comment on the issue with the timeout evidence, report the block to the user, and stop. A CI timeout does not consume or trigger a repair attempt because there is no terminal failure to repair.
+
+If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then run the same bounded completion polling procedure before evaluating the attempt. Apply the identical `ci_status: timed-out` blocked path if a post-repair suite does not reach a terminal state within the completion window.
 
 Use a maximum of **two repair attempts** unless the mission specifies a lower limit. Never use an unbounded retry loop.
 
@@ -240,7 +254,7 @@ For each attempt with failing checks:
 
        Return POWDERLINE_CI_REPAIRED or POWDERLINE_CI_BLOCKED per your output contract.
    ```
-4. Wait for CI to complete again and re-check status.
+4. Wait for CI using the bounded discovery and completion procedures above, then re-check status. Never wait indefinitely.
 
 Stop the loop immediately when checks pass. Record `ci_repair_attempts`, the repair commit SHA(s), and `ci_status: passed` in `run.json`, then proceed to Phase 10.
 
