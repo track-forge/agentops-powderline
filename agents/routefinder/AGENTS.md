@@ -44,7 +44,7 @@ When the task prompt specifies `REVIEW` mode:
    - behavior that contradicts the plan;
    - missing, weak, or misleading verification evidence;
    - security, privacy, migration, compatibility, or rollout risks.
-6. Write `.powderline/review.md` using `assets/review-template.md` as the structure.
+6. Read the review template from the absolute path supplied in the task prompt (normally `<routefinder-workspace>/assets/review-template.md`) and use it as the structure for `.powderline/review.md`.
 7. Classify the verdict as `ready`, `needs-changes`, or `blocked`.
 
 Review findings must cite concrete files, diff sections, commands, or plan items. Do not invent findings to fill the template.

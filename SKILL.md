@@ -187,11 +187,29 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
 
 ### Phase 9: Run the CI Repair Loop
 
-The repair loop is optional. Skip it when the mission explicitly disables CI repair or the PR has no checks. Otherwise, inspect the PR checks after LineRipper opens the PR:
+The repair loop is optional. Skip it when the mission explicitly disables CI repair. Otherwise, wait for GitHub to discover checks after LineRipper opens the PR. A first empty response does **not** prove that the PR has no CI.
 
 ```bash
-gh pr checks {pr_number} --repo {org}/{repo}
+checks_discovered=false
+for attempt in 1 2 3 4 5 6; do
+  if gh pr checks {pr_number} --repo {org}/{repo} --json name,state,link \
+      | jq -e 'length > 0' >/dev/null; then
+    checks_discovered=true
+    break
+  fi
+  if [ "$attempt" -lt 6 ]; then sleep 10; fi
+done
 ```
+
+This is a bounded discovery wait: at most six queries over roughly one minute. If no checks are registered after the final query, record `ci_status: not-configured` in `run.json` and proceed to Phase 10. Do not interpret an empty result before the final query as "no CI."
+
+When checks are discovered, wait for pending checks to reach a terminal state before deciding whether repair is needed:
+
+```bash
+gh pr checks {pr_number} --repo {org}/{repo} --watch --interval 10
+```
+
+If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then watch it to completion before evaluating the attempt.
 
 Use a maximum of **two repair attempts** unless the mission specifies a lower limit. Never use an unbounded retry loop.
 
@@ -251,10 +269,12 @@ sessions_spawn:
     Worktree: {worktree}
     PR: {pr_url}
     Base branch: {pr_target}
+    Review template: {routefinder_workspace}/assets/review-template.md
 
     Compare the PR diff against the mission and original plan. Identify completed
     items, missed items, scope drift, unintended changes, verification gaps, and risks.
-    Write the durable review to {worktree}/.powderline/review.md using the review template.
+    Write the durable review to {worktree}/.powderline/review.md using the review template
+    at the absolute path above.
 
     Return POWDERLINE_REVIEW_READY or POWDERLINE_REVIEW_BLOCKED per your output contract.
 ```

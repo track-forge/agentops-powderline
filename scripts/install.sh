@@ -75,6 +75,7 @@ echo "=== RouteFinder agent workspace ==="
 for f in "$REPO_ROOT"/agents/routefinder/*.md; do
   copy_file "$f" "$RF_WORKSPACE/$(basename "$f")" || skipped=$((skipped + 1))
 done
+copy_file "$REPO_ROOT/assets/review-template.md" "$RF_WORKSPACE/assets/review-template.md" || skipped=$((skipped + 1))
 
 echo ""
 echo "=== LineRipper agent workspace ==="
