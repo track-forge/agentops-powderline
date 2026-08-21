@@ -26,6 +26,7 @@ fi
 SKILL_DIR="$OPENCLAW_HOME/workspace/skills/agentops-powderline"
 RF_WORKSPACE="$OPENCLAW_HOME/agents/routefinder/workspace"
 LR_WORKSPACE="$OPENCLAW_HOME/agents/lineripper/workspace"
+SO_WORKSPACE="$OPENCLAW_HOME/agents/soloist/workspace"
 CREDENTIALS_DIR="$OPENCLAW_HOME/credentials"
 ENV_LOCAL="$CREDENTIALS_DIR/env.local"
 
@@ -69,6 +70,7 @@ echo ""
 echo "=== Shared TOOLS.md ==="
 copy_file "$REPO_ROOT/assets/TOOLS.md" "$RF_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
 copy_file "$REPO_ROOT/assets/TOOLS.md" "$LR_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
+copy_file "$REPO_ROOT/assets/TOOLS.md" "$SO_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
 
 echo ""
 echo "=== RouteFinder agent workspace ==="
@@ -84,9 +86,15 @@ for f in "$REPO_ROOT"/agents/lineripper/*.md; do
 done
 
 echo ""
+echo "=== Soloist agent workspace ==="
+for f in "$REPO_ROOT"/agents/soloist/*.md; do
+  copy_file "$f" "$SO_WORKSPACE/$(basename "$f")" || skipped=$((skipped + 1))
+done
+
+echo ""
 echo "=== Credentials symlink ==="
 if [[ -f "$ENV_LOCAL" ]]; then
-  for ws in "$RF_WORKSPACE" "$LR_WORKSPACE"; do
+  for ws in "$RF_WORKSPACE" "$LR_WORKSPACE" "$SO_WORKSPACE"; do
     mkdir -p "$ws"
     if [[ -L "$ws/.env.local" ]]; then
       echo "  OK (symlink exists): $ws/.env.local"
@@ -100,6 +108,7 @@ else
   echo "  Create it and re-run install, or symlink manually:"
   echo "    ln -sf $ENV_LOCAL $RF_WORKSPACE/.env.local"
   echo "    ln -sf $ENV_LOCAL $LR_WORKSPACE/.env.local"
+  echo "    ln -sf $ENV_LOCAL $SO_WORKSPACE/.env.local"
 fi
 
 echo ""
@@ -130,14 +139,22 @@ cat <<'AGENTS_JSON'
       "workspace": "~/.openclaw/agents/lineripper/workspace",
       "skills": [],
       "tools": { "deny": ["sessions_spawn"] }
+    },
+    {
+      "id": "soloist",
+      "name": "Soloist",
+      "model": "openai-codex/gpt-5.3-codex",
+      "workspace": "~/.openclaw/agents/soloist/workspace",
+      "skills": [],
+      "tools": { "deny": ["sessions_spawn"] }
     }
 AGENTS_JSON
 echo ""
 echo "2. Ensure your coordinator agent can spawn subagents."
 echo "   If agents.defaults.subagents.maxSpawnDepth is not set, it defaults to 1."
-echo "   That's sufficient — RouteFinder and LineRipper are leaf agents."
+echo "   That's sufficient — RouteFinder, LineRipper, and Soloist are leaf agents."
 echo ""
 echo "3. Ensure your coordinator agent's subagents.allowAgents includes"
-echo "   'routefinder' and 'lineripper' (or use '*' for all)."
+echo "   'routefinder', 'lineripper', and 'soloist' (or use '*' for all)."
 echo ""
 echo "4. Restart the gateway: openclaw gateway restart"
