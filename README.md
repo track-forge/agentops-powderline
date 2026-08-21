@@ -1,6 +1,6 @@
 # agentops-powderline
 
-Milestone-driven agent orchestration for [OpenClaw](https://github.com/openclaw/openclaw). Picks GitHub issues, plans an approach via **RouteFinder**, implements via **LineRipper**, and opens a PR.
+Milestone-driven agent orchestration for [OpenClaw](https://github.com/openclaw/openclaw). Picks GitHub issues, plans an approach via **RouteFinder**, implements via **LineRipper**, and opens a PR. **Soloist** handles explicitly assigned bounded tasks end to end.
 
 ## How It Works
 
@@ -18,6 +18,12 @@ Coordinator → gathers issue/milestone context
 
 The coordinator agent owns orchestration. RouteFinder owns planning and review. LineRipper owns implementation and bounded CI repair. Durable artifacts (`.powderline/mission.md`, `.powderline/plan.md`, `.powderline/review.md`) pass between them — no chat-only handoff.
 
+For smaller or operational tasks, the coordinator may explicitly invoke Soloist.
+Soloist inspects, plans internally, executes, verifies, and returns the requested
+PR, issue comment, artifact, report, or task-specific result. Automatic routing to
+Soloist is intentionally not defined; the standard issue flow remains RouteFinder
+→ LineRipper unless Soloist is explicitly requested.
+
 ## Install
 
 ```bash
@@ -34,6 +40,7 @@ The install script copies skill files, agent workspace templates, and prints the
 SKILL.md                          — coordinator workflow (OpenClaw skill)
 agents/routefinder/               — planning subagent workspace templates
 agents/lineripper/                — coding subagent workspace templates
+agents/soloist/                   — general-purpose execution workspace templates
 assets/                           — mission, plan, and PR body templates
 references/                       — labels, milestone rules, workspace layout docs
 scripts/install.sh                — install into an OpenClaw instance
@@ -52,6 +59,12 @@ Or with a milestone:
 
 ```
 Run Powderline on {org}/{repo} issue #{N} (milestone: "Content Makeover")
+```
+
+For one bounded plan-and-execute pass:
+
+```
+Run this task with Powderline Soloist: {objective, scope, expected outcome, and verification}
 ```
 
 The coordinator will:
@@ -75,3 +88,6 @@ The coordinator will:
 One repo + one issue + optional milestone → plan → code → PR.
 
 Not yet implemented: parallel milestone execution, auto-merge, dashboards.
+
+Soloist auto-selection is also out of scope. Invoke it explicitly when its
+single-agent execution model is the right fit.

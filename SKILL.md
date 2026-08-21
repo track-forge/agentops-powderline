@@ -1,6 +1,6 @@
 ---
 name: agentops-powderline
-description: "Orchestrate GitHub issue work through RouteFinder (planning) and LineRipper (coding) subagents."
+description: "Orchestrate GitHub issue work through RouteFinder, LineRipper, or an explicitly invoked Soloist subagent."
 ---
 
 # Powderline
@@ -13,6 +13,60 @@ Use this skill when asked to:
 - Run Powderline on a repo/issue
 - Plan and implement a GitHub issue via subagents
 - Work a milestone issue through the plan/code pipeline
+- Run one bounded task end to end with Soloist
+
+## Explicit Soloist Mode
+
+Soloist is a general-purpose leaf agent for one bounded objective. Use Soloist only
+when the user explicitly asks for it or explicitly requests a single-agent,
+plan-and-execute pass. Do not automatically route ordinary Powderline issues away
+from the RouteFinder → LineRipper pipeline.
+
+Good Soloist tasks include:
+
+- a small repository issue that one agent can inspect, implement, verify, and report;
+- an explicitly authorized system-maintenance, database, or operational chore;
+- a bounded task whose result is a PR, issue comment, artifact, report, or another
+  clearly specified outcome.
+
+The coordinator must provide:
+
+- the objective and acceptance criteria;
+- the working directory or issue worktree when repository work is involved;
+- repository and issue context when applicable;
+- the authorized credentials and external actions, if any;
+- the expected outcome type and verification requirements;
+- applicable safety constraints and human-review conditions.
+
+Issue and worktree context are the default for repository work, not a universal
+requirement. Never infer authority for production changes, destructive actions,
+secret rotation, publishing, or unrelated external communication.
+
+Spawn Soloist with isolated context:
+
+```
+sessions_spawn:
+  agentId: "soloist"
+  context: "isolated"
+  task: |
+    You are Soloist. Read your SOUL.md and AGENTS.md for operating instructions.
+
+    Objective: {objective}
+    Acceptance criteria: {acceptance_criteria}
+    Working directory: {worktree_or_directory}
+    Repository/issue context: {repo_issue_or_none}
+    Authorized external actions: {authorized_actions}
+    Expected outcome: {outcome_type_and_location}
+    Verification: {verification_requirements}
+    Constraints: {constraints}
+
+    Return POWDERLINE_SOLO_READY or POWDERLINE_SOLO_BLOCKED per your output contract.
+```
+
+Wait for Soloist's announcement. On `POWDERLINE_SOLO_READY`, verify the reported
+outcome exists and relay its evidence to the user. On `POWDERLINE_SOLO_BLOCKED`,
+report the reason and any partial outcome. Only update a GitHub issue when that
+action was included in the task authorization.
 
 ## Coordinator Workflow
 

@@ -6,7 +6,7 @@ read_when:
 
 # TOOLS.md — Shared Environment
 
-These instructions apply to all Powderline agents (RouteFinder, LineRipper).
+These instructions apply to all Powderline agents (RouteFinder, LineRipper, Soloist).
 
 ## Credentials
 
