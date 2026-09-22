@@ -24,6 +24,7 @@ if [[ "$1" == "--force" ]]; then
 fi
 
 SKILL_DIR="$OPENCLAW_HOME/workspace/skills/agentops-powderline"
+SC_WORKSPACE="$OPENCLAW_HOME/agents/scout/workspace"
 RF_WORKSPACE="$OPENCLAW_HOME/agents/routefinder/workspace"
 LR_WORKSPACE="$OPENCLAW_HOME/agents/lineripper/workspace"
 SO_WORKSPACE="$OPENCLAW_HOME/agents/soloist/workspace"
@@ -72,6 +73,13 @@ echo "=== Shared TOOLS.md ==="
 copy_file "$REPO_ROOT/assets/TOOLS.md" "$RF_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
 copy_file "$REPO_ROOT/assets/TOOLS.md" "$LR_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
 copy_file "$REPO_ROOT/assets/TOOLS.md" "$SO_WORKSPACE/TOOLS.md" || skipped=$((skipped + 1))
+
+echo ""
+echo "=== Scout agent workspace ==="
+for f in "$REPO_ROOT"/agents/scout/*.md; do
+  copy_file "$f" "$SC_WORKSPACE/$(basename "$f")" || skipped=$((skipped + 1))
+done
+copy_file "$REPO_ROOT/assets/recon-template.md" "$SC_WORKSPACE/assets/recon-template.md" || skipped=$((skipped + 1))
 
 echo ""
 echo "=== RouteFinder agent workspace ==="
@@ -126,6 +134,14 @@ echo "1. Add these entries to agents.list[] in $OPENCLAW_HOME/openclaw.json:"
 echo ""
 cat <<'AGENTS_JSON'
     {
+      "id": "scout",
+      "name": "Scout",
+      "model": "openai-codex/gpt-5.3-codex",
+      "workspace": "~/.openclaw/agents/scout/workspace",
+      "skills": [],
+      "tools": { "deny": ["sessions_spawn"] }
+    },
+    {
       "id": "routefinder",
       "name": "RouteFinder",
       "model": "openai-codex/gpt-5.5",
@@ -153,9 +169,9 @@ AGENTS_JSON
 echo ""
 echo "2. Ensure your coordinator agent can spawn subagents."
 echo "   If agents.defaults.subagents.maxSpawnDepth is not set, it defaults to 1."
-echo "   That's sufficient — RouteFinder, LineRipper, and Soloist are leaf agents."
+echo "   That's sufficient — Scout, RouteFinder, LineRipper, and Soloist are leaf agents."
 echo ""
 echo "3. Ensure your coordinator agent's subagents.allowAgents includes"
-echo "   'routefinder', 'lineripper', and 'soloist' (or use '*' for all)."
+echo "   'scout', 'routefinder', 'lineripper', and 'soloist' (or use '*' for all)."
 echo ""
 echo "4. Restart the gateway: openclaw gateway restart"

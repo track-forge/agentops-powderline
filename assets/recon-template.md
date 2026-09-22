@@ -1,0 +1,30 @@
+# Powderline Recon: Issue #{ISSUE_NUMBER}
+
+## Cache Metadata
+
+- Base SHA: `{BASE_SHA}`
+- Issue body SHA-256: `{ISSUE_BODY_SHA256}`
+
+## Relevant Files and Symbols
+
+{FILES_AND_SYMBOLS_WITH_SHORT_REASONS}
+
+## Repository Constraints
+
+{APPLICABLE_AGENT_RULES_AND_PROJECT_CONSTRAINTS}
+
+## Validation Commands
+
+{LIKELY_RELEVANT_COMMANDS_WITHOUT_RUNNING_EXPENSIVE_GATES}
+
+## Likely Test Seams
+
+{TEST_FILES_FIXTURES_OR_INTERFACES_RELEVANT_TO_THE_CHANGE}
+
+## Unknowns
+
+{UNRESOLVED_QUESTIONS_OR_NONE}
+
+## Confidence
+
+{HIGH_MEDIUM_OR_LOW_WITH_ONE_SENTENCE_REASON}

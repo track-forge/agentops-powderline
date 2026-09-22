@@ -6,7 +6,8 @@ read_when:
 
 # TOOLS.md — Shared Environment
 
-These instructions apply to all Powderline agents (RouteFinder, LineRipper, Soloist).
+These instructions apply to RouteFinder, LineRipper, and Soloist. Scout has a
+separate read-only `TOOLS.md` and receives no project credentials.
 
 ## Credentials
 

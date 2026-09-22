@@ -1,6 +1,6 @@
 ---
 name: agentops-powderline
-description: "Orchestrate GitHub issue work through RouteFinder, LineRipper, or an explicitly invoked Soloist subagent."
+description: "Orchestrate GitHub issue work through bounded Scout reconnaissance, RouteFinder planning/review, LineRipper implementation, or an explicitly invoked Soloist subagent."
 ---
 
 # Powderline
@@ -12,15 +12,16 @@ Milestone-driven agent orchestration. You are the coordinator. You gather contex
 Before spawning any subagent, read `model-routing.yaml` adjacent to this
 `SKILL.md`. Validate that it has `version: 1` and a `modelRouting` mapping.
 
-- When `modelRouting.enabled` is `true`, resolve `standard` and `frontier` as
-  literal runtime model identifiers. Pass the resolved value explicitly as the
-  `model` field on every `sessions_spawn` call.
+- When `modelRouting.enabled` is `true`, resolve `scout`, `standard`, and
+  `frontier` as literal runtime model identifiers. Pass the resolved value
+  explicitly as the `model` field on every `sessions_spawn` call.
+- When both `modelRouting.enabled` and `modelRouting.scoutEnabled` are `true`,
+  run the Scout phase on `scout`. Treat `scoutMaxBytes` as a positive integer;
+  use 8192 when it is absent or invalid.
 - Use `standard` for Soloist, RouteFinder planning and review, LineRipper
   implementation, and the first CI repair attempt.
 - Use `frontier` for the final allowed CI repair attempt after an earlier repair
   has failed. Do not use a frontier model merely to classify work.
-- `scout` is reserved for the planned reconnaissance phase. Do not spawn a Scout
-  until that phase and its output contract are implemented.
 - When routing is disabled, the file is missing or invalid, or the required key
   is empty, omit `model` and use the model configured for the selected agent.
 - When `fallback` is `existing` and a spawn is rejected specifically because the
@@ -157,27 +158,91 @@ Write or update `.powderline/run.json`:
   "local_clone": "~/repos/{org}/{repo}",
   "worktree": "~/repos/{org}/{repo}/.worktrees/issue-{N}",
   "mission_path": "{worktree}/.powderline/mission.md",
+  "recon_path": "{worktree}/.powderline/recon.md",
   "plan_path": "{worktree}/.powderline/plan.md",
+  "recon_cache_key": {
+    "base_sha": "{base_commit_sha}",
+    "issue_body_sha256": "{sha256_of_exact_raw_issue_body}"
+  },
+  "recon_status": "{pending_or_disabled}",
   "model_routing": {
     "enabled": {routing_enabled},
+    "scout_enabled": {scout_enabled},
+    "scout": "{resolved_scout_model_or_existing}",
     "standard": "{resolved_standard_model_or_existing}",
     "frontier": "{resolved_frontier_model_or_existing}",
-    "fallback": "{fallback_policy}"
+    "fallback": "{fallback_policy}",
+    "scout_max_bytes": {resolved_scout_max_bytes}
   },
   "model_runs": [],
   "status": "initialized"
 }
 ```
 
-### Phase 5: Spawn RouteFinder
+The base SHA is the worktree's current `HEAD` before any implementation work.
+Hash the exact raw issue body gathered in Phase 1 with SHA-256 before placing it
+in the mission template. These two values form the recon cache key.
 
-Update `run.json` status to `planning`.
+### Phase 5: Run Bounded Reconnaissance
 
-Comment on the issue to signal work has started:
+Comment once to signal that work has started:
 
 ```bash
-gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline picked up this issue. RouteFinder is planning the implementation."
+gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline picked up this issue and is preparing an implementation plan."
 ```
+
+If Scout is disabled, set `recon_status` to `disabled` and continue to Phase 6
+without a recon artifact.
+
+Before spawning Scout, check an existing `.powderline/recon.md`. It is a cache
+hit only when all of these are true:
+
+- its Base SHA exactly matches `recon_cache_key.base_sha`;
+- its Issue body SHA-256 exactly matches `recon_cache_key.issue_body_sha256`;
+- its byte count is no greater than `scoutMaxBytes`.
+
+On a cache hit, set `recon_status` to `cache-hit`, retain the artifact, and
+continue to Phase 6. Do not spawn Scout.
+
+Otherwise set `run.json` status to `reconnaissance`, append the model run entry,
+and spawn Scout with isolated context:
+
+```
+sessions_spawn:
+  agentId: "scout"
+  model: "{resolved_scout_model}"
+  context: "isolated"
+  task: |
+    You are Scout. Read your SOUL.md and AGENTS.md for operating instructions.
+
+    Mission: {worktree}/.powderline/mission.md
+    Worktree: {worktree}
+    Recon output: {worktree}/.powderline/recon.md
+    Recon template: {scout_workspace}/assets/recon-template.md
+    Base SHA: {base_commit_sha}
+    Issue body SHA-256: {issue_body_sha256}
+    scoutMaxBytes: {resolved_scout_max_bytes}
+
+    Perform bounded, read-only repository reconnaissance and write the compact
+    evidence map. Return POWDERLINE_RECON_READY or POWDERLINE_RECON_BLOCKED per
+    your output contract.
+```
+
+Wait for Scout's announcement. On `POWDERLINE_RECON_READY`, independently check
+that the file exists, contains the exact cache-key values, and fits the byte
+cap. If valid, record `recon_status: ready`, byte count, and confidence. If the
+announcement or artifact is missing, malformed, stale, or oversized, record
+`recon_status: ignored` with the reason and continue without recon.
+
+On `POWDERLINE_RECON_BLOCKED`, record `recon_status: blocked` and its reason,
+then continue without recon. Never label the issue blocked solely because Scout
+failed: reconnaissance is an optimization, not a workflow gate. Only tell
+RouteFinder to use the recon path when the coordinator validated it in this
+phase.
+
+### Phase 6: Spawn RouteFinder
+
+Update `run.json` status to `planning`.
 
 Spawn the planning subagent:
 
@@ -190,9 +255,11 @@ sessions_spawn:
     You are RouteFinder. Read your SOUL.md and AGENTS.md for operating instructions.
 
     Your mission file is at: {worktree}/.powderline/mission.md
+    Validated recon: {validated_recon_path_or_none}
     Your worktree is at: {worktree}
 
-    Read the mission, inspect the codebase, and write your plan to:
+    Read the mission and, when supplied, the recon artifact. Verify important
+    recon pointers, inspect any remaining necessary context, and write your plan to:
     {worktree}/.powderline/plan.md
 
     Return POWDERLINE_PLAN_READY or POWDERLINE_PLAN_BLOCKED per your output contract.
@@ -200,14 +267,14 @@ sessions_spawn:
 
 Wait for RouteFinder's announcement.
 
-### Phase 6: Handle Plan Result
+### Phase 7: Handle Plan Result
 
 Parse the announced result for `POWDERLINE_PLAN_READY` or `POWDERLINE_PLAN_BLOCKED`.
 
 **If PLAN_READY:**
 - Update `run.json` status to `plan-ready`.
 - RouteFinder already labeled the issue `agentops:plan-ready`.
-- Proceed to Phase 7.
+- Proceed to Phase 8.
 
 **If PLAN_BLOCKED:**
 - Update `run.json` status to `plan-blocked`.
@@ -222,7 +289,7 @@ Parse the announced result for `POWDERLINE_PLAN_READY` or `POWDERLINE_PLAN_BLOCK
   ```
 - Report the block reason to the user. Stop here.
 
-### Phase 7: Spawn LineRipper
+### Phase 8: Spawn LineRipper
 
 Update `run.json` status to `coding`.
 
@@ -247,7 +314,7 @@ sessions_spawn:
 
 Wait for LineRipper's announcement.
 
-### Phase 8: Handle Code Result
+### Phase 9: Handle Code Result
 
 Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED`.
 
@@ -258,7 +325,7 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
   ```bash
   gh issue comment {issue_number} --repo {org}/{repo} --body "Powderline opened a PR: {pr_url}"
   ```
-- Proceed to Phase 9.
+- Proceed to Phase 10.
 
 **If CODE_BLOCKED:**
 - Update `run.json` status to `code-blocked`.
@@ -273,7 +340,7 @@ Parse the announced result for `POWDERLINE_PR_READY` or `POWDERLINE_CODE_BLOCKED
   ```
 - Report the block reason to the user.
 
-### Phase 9: Run the CI Repair Loop
+### Phase 10: Run the CI Repair Loop
 
 The repair loop is optional. Skip it when the mission explicitly disables CI repair. Otherwise, wait for GitHub to discover checks after LineRipper opens the PR. A first empty response does **not** prove that the PR has no CI.
 
@@ -289,7 +356,7 @@ for attempt in 1 2 3 4 5 6; do
 done
 ```
 
-This is a bounded discovery wait: at most six queries over roughly one minute. If no checks are registered after the final query, record `ci_status: not-configured` in `run.json` and proceed to Phase 10. Do not interpret an empty result before the final query as "no CI."
+This is a bounded discovery wait: at most six queries over roughly one minute. If no checks are registered after the final query, record `ci_status: not-configured` in `run.json` and proceed to Phase 11. Do not interpret an empty result before the final query as "no CI."
 
 When checks are discovered, wait for pending checks to reach a terminal state before deciding whether repair is needed. Keep this completion wait bounded too; never use `gh pr checks --watch` without an outer timeout.
 
@@ -311,7 +378,7 @@ done
 
 This completion wait is capped at 60 queries over roughly ten minutes. If checks are still pending after the final query, select timeout evidence with `jq -c '[.[] | select(.bucket == "pending") | {name, link}]' <<<"$checks_json"`, update `run.json` to status `ci-blocked` with `ci_status: timed-out`, record those pending check names and links, apply `agentops:blocked` and (when `HumanReview: true`) `agentops:needs-human-review`, comment on the issue with the timeout evidence, report the block to the user, and stop. A CI timeout does not consume or trigger a repair attempt because there is no terminal failure to repair.
 
-If all checks pass, record `ci_status: passed` and proceed to Phase 10. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then run the same bounded completion polling procedure before evaluating the attempt. Apply the identical `ci_status: timed-out` blocked path if a post-repair suite does not reach a terminal state within the completion window.
+If all checks pass, record `ci_status: passed` and proceed to Phase 11. If any checks fail, capture their run IDs and continue with the bounded repair loop below. After every repair push, wait for the new check suite to register using the same bounded discovery procedure, then run the same bounded completion polling procedure before evaluating the attempt. Apply the identical `ci_status: timed-out` blocked path if a post-repair suite does not reach a terminal state within the completion window.
 
 Use a maximum of **two repair attempts** unless the mission specifies a lower limit. Never use an unbounded retry loop.
 
@@ -345,7 +412,7 @@ For each attempt with failing checks:
    ```
 4. Wait for CI using the bounded discovery and completion procedures above, then re-check status. Never wait indefinitely.
 
-Stop the loop immediately when checks pass. Record `ci_repair_attempts`, the repair commit SHA(s), and `ci_status: passed` in `run.json`, then proceed to Phase 10.
+Stop the loop immediately when checks pass. Record `ci_repair_attempts`, the repair commit SHA(s), and `ci_status: passed` in `run.json`, then proceed to Phase 11.
 
 If LineRipper reports blocked, or checks still fail after the final attempt:
 
@@ -354,7 +421,7 @@ If LineRipper reports blocked, or checks still fail after the final attempt:
 - Comment on the issue with the last failing check and repair attempts.
 - Report the block to the user. Stop here.
 
-### Phase 10: Spawn RouteFinder for Plan-Aware Review
+### Phase 11: Spawn RouteFinder for Plan-Aware Review
 
 The review pass is optional but enabled by default after the PR is CI-clean. Skip it only when the mission explicitly disables review.
 
@@ -383,7 +450,7 @@ sessions_spawn:
     Return POWDERLINE_REVIEW_READY or POWDERLINE_REVIEW_BLOCKED per your output contract.
 ```
 
-### Phase 11: Handle Review Result
+### Phase 12: Handle Review Result
 
 **If REVIEW_READY with no blocking findings:**
 
