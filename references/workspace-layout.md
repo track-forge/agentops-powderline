@@ -37,6 +37,7 @@ Each issue worktree has a `.powderline/` directory for run artifacts:
 ```
 .powderline/
   mission.md      # coordinator writes this
+  recon.md        # Scout writes this
   plan.md         # RouteFinder writes this
   run.json        # coordinator writes and updates this
 ```
@@ -45,6 +46,7 @@ Full path example:
 
 ```
 ~/repos/track-forge/crucible/.worktrees/issue-44/.powderline/mission.md
+~/repos/track-forge/crucible/.worktrees/issue-44/.powderline/recon.md
 ~/repos/track-forge/crucible/.worktrees/issue-44/.powderline/plan.md
 ~/repos/track-forge/crucible/.worktrees/issue-44/.powderline/run.json
 ```

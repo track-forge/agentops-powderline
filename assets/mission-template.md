@@ -21,6 +21,7 @@
 
 - Worktree root: `{WORKTREE_PATH}`
 - Mission file: `{WORKTREE_PATH}/.powderline/mission.md`
+- Recon file: `{WORKTREE_PATH}/.powderline/recon.md`
 - Plan file: `{WORKTREE_PATH}/.powderline/plan.md`
 - Run metadata: `{WORKTREE_PATH}/.powderline/run.json`
 
@@ -61,11 +62,24 @@
 
 {ISSUE_COMMENTS}
 
+## Required Scout Output
+
+When invoked, Scout must write a bounded repository evidence map to:
+
+`{WORKTREE_PATH}/.powderline/recon.md`
+
+It must return either `POWDERLINE_RECON_READY` or
+`POWDERLINE_RECON_BLOCKED` according to Scout's output contract. Recon failure
+does not block RouteFinder from planning without it.
+
 ## Required RouteFinder Output
 
 Write the plan to:
 
 `{WORKTREE_PATH}/.powderline/plan.md`
+
+Read `.powderline/recon.md` first when a valid artifact is available, and verify
+important pointers before relying on it.
 
 Then return either:
 
