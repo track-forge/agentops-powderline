@@ -38,6 +38,7 @@ The install script copies skill files, agent workspace templates, and prints the
 
 ```
 SKILL.md                          — coordinator workflow (OpenClaw skill)
+model-routing.yaml               — runtime model routing for subagent spawns
 agents/routefinder/               — planning subagent workspace templates
 agents/lineripper/                — coding subagent workspace templates
 agents/soloist/                   — general-purpose execution workspace templates
@@ -46,6 +47,32 @@ references/                       — labels, milestone rules, workspace layout 
 scripts/install.sh                — install into an OpenClaw instance
 scripts/validate-layout.sh        — verify all required files exist
 ```
+
+## Model Routing
+
+`model-routing.yaml` controls the runtime model passed to each Powderline
+`sessions_spawn` call. Routing is enabled in the shipped profile:
+
+```yaml
+modelRouting:
+  enabled: true
+  scout: openai-codex/gpt-5.6-luna
+  standard: openai-codex/gpt-5.6-terra
+  frontier: openai-codex/gpt-5.6-sol
+  fallback: existing
+```
+
+The current workflow uses `standard` for Soloist, planning, implementation,
+the first CI repair, and review. A final CI repair after the first repair fails
+uses `frontier`. `scout` is reserved for the planned reconnaissance phase and
+is not spawned yet.
+
+Set `enabled: false` to omit runtime model overrides. With `fallback: existing`,
+a spawn rejected because its requested model is unavailable is retried once
+without `model`, allowing the configured `agents.list[]` model to take over.
+Edit the installed copy at
+`~/.openclaw/workspace/skills/agentops-powderline/model-routing.yaml` to match
+the model identifiers available to that OpenClaw installation.
 
 ## Usage
 

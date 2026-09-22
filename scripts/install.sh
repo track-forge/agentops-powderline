@@ -52,6 +52,7 @@ skipped=0
 
 echo "=== Skill files ==="
 copy_file "$REPO_ROOT/SKILL.md" "$SKILL_DIR/SKILL.md" || skipped=$((skipped + 1))
+copy_file "$REPO_ROOT/model-routing.yaml" "$SKILL_DIR/model-routing.yaml" || skipped=$((skipped + 1))
 
 echo ""
 echo "=== Assets ==="

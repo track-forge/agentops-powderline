@@ -7,6 +7,30 @@ description: "Orchestrate GitHub issue work through RouteFinder, LineRipper, or 
 
 Milestone-driven agent orchestration. You are the coordinator. You gather context, prepare the workspace, spawn subagents, and report results. You do not plan the implementation or write the code yourself.
 
+## Model Routing
+
+Before spawning any subagent, read `model-routing.yaml` adjacent to this
+`SKILL.md`. Validate that it has `version: 1` and a `modelRouting` mapping.
+
+- When `modelRouting.enabled` is `true`, resolve `standard` and `frontier` as
+  literal runtime model identifiers. Pass the resolved value explicitly as the
+  `model` field on every `sessions_spawn` call.
+- Use `standard` for Soloist, RouteFinder planning and review, LineRipper
+  implementation, and the first CI repair attempt.
+- Use `frontier` for the final allowed CI repair attempt after an earlier repair
+  has failed. Do not use a frontier model merely to classify work.
+- `scout` is reserved for the planned reconnaissance phase. Do not spawn a Scout
+  until that phase and its output contract are implemented.
+- When routing is disabled, the file is missing or invalid, or the required key
+  is empty, omit `model` and use the model configured for the selected agent.
+- When `fallback` is `existing` and a spawn is rejected specifically because the
+  requested model is unavailable, unknown, or unauthorized, retry that spawn
+  once without `model`. Do not retry other failures through this fallback.
+
+Record the resolved routing configuration in `run.json`. Before each spawn,
+append its phase, requested model (or `existing`), and routing reason to a
+`model_runs` array. If fallback occurs, record that outcome on the same entry.
+
 ## Trigger
 
 Use this skill when asked to:
@@ -47,6 +71,7 @@ Spawn Soloist with isolated context:
 ```
 sessions_spawn:
   agentId: "soloist"
+  model: "{resolved_standard_model}"
   context: "isolated"
   task: |
     You are Soloist. Read your SOUL.md and AGENTS.md for operating instructions.
@@ -133,6 +158,13 @@ Write or update `.powderline/run.json`:
   "worktree": "~/repos/{org}/{repo}/.worktrees/issue-{N}",
   "mission_path": "{worktree}/.powderline/mission.md",
   "plan_path": "{worktree}/.powderline/plan.md",
+  "model_routing": {
+    "enabled": {routing_enabled},
+    "standard": "{resolved_standard_model_or_existing}",
+    "frontier": "{resolved_frontier_model_or_existing}",
+    "fallback": "{fallback_policy}"
+  },
+  "model_runs": [],
   "status": "initialized"
 }
 ```
@@ -152,6 +184,7 @@ Spawn the planning subagent:
 ```
 sessions_spawn:
   agentId: "routefinder"
+  model: "{resolved_standard_model}"
   context: "isolated"
   task: |
     You are RouteFinder. Read your SOUL.md and AGENTS.md for operating instructions.
@@ -198,6 +231,7 @@ Spawn the coding subagent:
 ```
 sessions_spawn:
   agentId: "lineripper"
+  model: "{resolved_standard_model}"
   context: "isolated"
   task: |
     You are LineRipper. Read your SOUL.md and AGENTS.md for operating instructions.
@@ -292,6 +326,7 @@ For each attempt with failing checks:
    ```
    sessions_spawn:
      agentId: "lineripper"
+     model: "{resolved_standard_model_for_attempt_1_or_frontier_model_for_final_attempt}"
      context: "isolated"
      task: |
        You are LineRipper operating in CI_REPAIR mode. Read your SOUL.md and AGENTS.md.
@@ -328,6 +363,7 @@ Update `run.json` status to `reviewing`, then spawn RouteFinder in review mode:
 ```
 sessions_spawn:
   agentId: "routefinder"
+  model: "{resolved_standard_model}"
   context: "isolated"
   task: |
     You are RouteFinder operating in REVIEW mode. Read your SOUL.md and AGENTS.md.

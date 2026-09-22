@@ -1,0 +1,10 @@
+version: 1
+
+# Powderline reads this file as workflow configuration. These values are passed
+# to sessions_spawn at runtime; the agents.list[] model remains the fallback.
+modelRouting:
+  enabled: true
+  scout: openai-codex/gpt-5.6-luna
+  standard: openai-codex/gpt-5.6-terra
+  frontier: openai-codex/gpt-5.6-sol
+  fallback: existing

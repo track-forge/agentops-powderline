@@ -5,6 +5,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 REQUIRED_FILES=(
   "SKILL.md"
+  "model-routing.yaml"
   "agents/routefinder/AGENTS.md"
   "agents/routefinder/SOUL.md"
   "agents/routefinder/IDENTITY.md"
