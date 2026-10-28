@@ -136,7 +136,7 @@ cat <<'AGENTS_JSON'
     {
       "id": "scout",
       "name": "Scout",
-      "model": "openai-codex/gpt-5.3-codex",
+      "model": "openai/gpt-6-luna",
       "workspace": "~/.openclaw/agents/scout/workspace",
       "skills": [],
       "tools": { "deny": ["sessions_spawn"] }
@@ -144,7 +144,7 @@ cat <<'AGENTS_JSON'
     {
       "id": "routefinder",
       "name": "RouteFinder",
-      "model": "openai-codex/gpt-5.5",
+      "model": "openai/gpt-6.1-terra",
       "workspace": "~/.openclaw/agents/routefinder/workspace",
       "skills": [],
       "tools": { "deny": ["sessions_spawn"] }
@@ -152,7 +152,7 @@ cat <<'AGENTS_JSON'
     {
       "id": "lineripper",
       "name": "LineRipper",
-      "model": "openai-codex/gpt-5.3-codex",
+      "model": "openai/gpt-6.1-terra",
       "workspace": "~/.openclaw/agents/lineripper/workspace",
       "skills": [],
       "tools": { "deny": ["sessions_spawn"] }
@@ -160,7 +160,7 @@ cat <<'AGENTS_JSON'
     {
       "id": "soloist",
       "name": "Soloist",
-      "model": "openai-codex/gpt-5.3-codex",
+      "model": "openai/gpt-6.1-terra",
       "workspace": "~/.openclaw/agents/soloist/workspace",
       "skills": [],
       "tools": { "deny": ["sessions_spawn"] }
