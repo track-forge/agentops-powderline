@@ -50,6 +50,7 @@ agents/lineripper/                — coding subagent workspace templates
 agents/soloist/                   — general-purpose execution workspace templates
 assets/                           — mission, plan, and PR body templates
 references/                       — labels, milestone rules, workspace layout docs
+references/runtime-adaptation.md      — runtime portability addendum (non-OpenClaw harnesses)
 scripts/install.sh                — install into an OpenClaw instance
 scripts/validate-layout.sh        — verify all required files exist
 ```
