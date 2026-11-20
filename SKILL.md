@@ -121,9 +121,9 @@ Issue branch pattern (default: `issue/{issue_number}-{slug}`):
 
 ### Phase 3: Prepare Workspace
 
-1. Ensure the local repo clone exists at `~/repos/{org}/{repo}`. Clone if missing.
+1. Resolve and verify the canonical local clone using [Workspace Layout](references/workspace-layout.md). Use the coordinator’s workspace instructions (for example, `AGENTS.md`) to find its repo mapping; do not assume the skill directory or a worker’s workspace is the coordinator workspace.
 2. Fetch latest refs: `git fetch --all`.
-3. Create or reuse the issue worktree at `~/repos/{org}/{repo}/.worktrees/issue-{issue_number}`.
+3. Create or reuse the issue worktree at `{local_clone}/.worktrees/issue-{issue_number}`.
 
 Worktree reuse rules:
 - If the worktree exists, check `git status --short`.
@@ -155,8 +155,8 @@ Write or update `.powderline/run.json`:
   "base_branch": "{base_branch}",
   "pr_target": "{pr_target}",
   "issue_branch_pattern": "{pattern}",
-  "local_clone": "~/repos/{org}/{repo}",
-  "worktree": "~/repos/{org}/{repo}/.worktrees/issue-{N}",
+  "local_clone": "{absolute_local_clone_path}",
+  "worktree": "{absolute_worktree_path}",
   "mission_path": "{worktree}/.powderline/mission.md",
   "recon_path": "{worktree}/.powderline/recon.md",
   "plan_path": "{worktree}/.powderline/plan.md",
