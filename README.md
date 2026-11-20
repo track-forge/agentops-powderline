@@ -63,8 +63,8 @@ scripts/validate-layout.sh        — verify all required files exist
 modelRouting:
   enabled: true
   scoutEnabled: true
-  scout: openai/gpt-6-luna
-  standard: openai/gpt-6.1-terra
+  scout: openai/gpt-6.1-terra
+  standard: openai/gpt-6.1-sol
   frontier: openai/gpt-6.1-sol
   fallback: existing
   scoutMaxBytes: 8192
