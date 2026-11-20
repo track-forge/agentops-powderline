@@ -107,8 +107,8 @@ Run this task with Powderline Soloist: {objective, scope, expected outcome, and 
 ```
 
 The coordinator will:
-1. Clone/fetch the repo to `~/repos/{org}/{repo}/`
-2. Create a worktree at `.worktrees/issue-{N}/`
+1. Fetch in the verified [canonical clone](references/workspace-layout.md): an explicit path or the coordinator workspace’s repo mapping takes precedence over the portable `~/repos/{org}/{repo}/` fallback.
+2. Create or reuse `.worktrees/issue-{N}/` under that clone.
 3. Write a mission packet to `.powderline/mission.md`
 4. Spawn Scout to write a bounded `.powderline/recon.md`
 5. Spawn RouteFinder to verify the recon and write `.powderline/plan.md`
